@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRF Analytics</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #1f2328; --muted: #57606a; --line: #d0d7de; --soft: #f6f8fa; --card: #fff;
+    /* Same bar colour as the web app's product tabs (5.5:1 against white labels). */
+    --tab: #1a63d8; --accent: #1a63d8;
+    --up: #1a7f37; --down: #cf222e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--soft); color: var(--ink);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 14px; padding: 14px 20px 10px; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  header .stamp { margin-left: auto; color: var(--muted); font-size: 12px; text-align: right; }
+
+  nav { display: flex; gap: 2px; margin: 0 20px; padding: 4px 8px; background: var(--tab);
+        border-radius: 8px; position: sticky; top: 0; z-index: 5; }
+  nav button { appearance: none; border: 0; background: transparent; color: #fff; cursor: pointer;
+    font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 6px; }
+  nav button:hover { background: rgba(255,255,255,0.14); }
+  nav button[aria-selected="true"] { background: rgba(255,255,255,0.22); font-weight: 700; }
+  nav button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+
+  main { padding: 14px 20px 28px; }
+  section[role="tabpanel"] { display: none; }
+  section[role="tabpanel"].on { display: block; }
+  h2 { font-size: 17px; margin: 4px 0 6px; }
+  details.about { margin: 0 0 12px; color: var(--muted); max-width: 1100px; }
+  details.about summary { cursor: pointer; color: var(--accent); font-size: 13px; width: max-content; }
+  details.about p, details.about ul { margin: 8px 0; }
+  details.about li { margin: 3px 0; }
+  code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: #eaeef2;
+         padding: 1px 4px; border-radius: 4px; }
+
+  .bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 0 0 12px; }
+  .bar .spacer { flex: 1; }
+  label.f { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+  select, input[type=number], input[type=search] {
+    font: inherit; font-size: 14px; color: var(--ink); background: #fff; border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; min-width: 120px; }
+  input[type=number] { width: 110px; min-width: 0; }
+  select.wide { min-width: 240px; }
+  button.btn { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink); }
+  button.btn:hover { background: #f3f4f6; }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn.primary:hover { filter: brightness(1.08); }
+
+  .frame { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+           overflow: hidden; }
+  .frame iframe { display: block; width: 100%; border: 0; }
+  .frame .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    gap: 10px; background: rgba(255,255,255,0.85); color: var(--muted); font-size: 14px; }
+  .frame .loading[hidden] { display: none; }
+  .spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent);
+          border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .note { border-radius: 8px; padding: 10px 14px; margin: 0 0 12px; font-size: 13px; max-width: 1100px; }
+  .note.info { background: #ddf4ff; color: #0a3069; }
+  .note.warn { background: #fff8c5; color: #4d2d00; }
+
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 0 0 12px; }
+  .tile { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .tile .k { font-size: 12px; color: var(--muted); }
+  .tile .v { font-size: 24px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .tile .d { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .d.up { color: var(--up); } .tile .d.down { color: var(--down); } .tile .d.flat { color: var(--muted); }
+  .tile .h { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .tablebar { display: flex; align-items: center; gap: 12px; margin: 14px 0 8px; flex-wrap: wrap; }
+  .tablebar .count { color: var(--muted); font-size: 13px; }
+  .tablewrap { background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: auto;
+               max-height: 560px; }
+  table.grid { border-collapse: collapse; font-size: 12.5px; white-space: nowrap; width: max-content;
+               min-width: 100%; font-variant-numeric: tabular-nums; }
+  table.grid th { position: sticky; top: 0; background: #f6f8fa; text-align: left; font-weight: 600;
+    padding: 6px 10px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  table.grid th:hover { background: #eef1f4; }
+  table.grid th .arrow { color: var(--accent); }
+  table.grid td { padding: 4px 10px; border-bottom: 1px solid #eef1f4; }
+  table.grid td.num { text-align: right; }
+  table.grid tr:hover td { background: #f6f8fa; }
+  .pager { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 13px; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1f2328;
+    color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s;
+    pointer-events: none; z-index: 20; }
+  .toast.show { opacity: 1; }
+  @media (max-width: 1180px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>PRF Analytics</h1>
+  <span class="sub">Pasture, Rangeland, Forage — rainfall index</span>
+  <span class="stamp" id="stamp"></span>
+</header>
+
+<nav role="tablist" aria-label="Views">
+  <button role="tab" id="t-map" aria-controls="p-map" aria-selected="true">County map</button>
+  <button role="tab" id="t-iv" aria-controls="p-iv" aria-selected="false">Interval analyzer</button>
+  <button role="tab" id="t-al" aria-controls="p-al" aria-selected="false">All allocations</button>
+  <button role="tab" id="t-vt" aria-controls="p-vt" aria-selected="false">Old vs new index</button>
+  <button role="tab" id="t-herd" aria-controls="p-herd" aria-selected="false">Herd size</button>
+</nav>
+
+<main>
+<!-- ============================================================ county map -->
+<section role="tabpanel" id="p-map" class="on" aria-labelledby="t-map">
+  <div class="bar">
+    <details class="about">
+      <summary>About these views</summary>
+      <p>One map, five views — pick one from the <b>Show</b> dropdown inside the map:</p>
+      <ul>
+        <li><b>County multiplier — CBV ($/acre)</b> — the RMA per-acre county dollar figure that scales
+          PRF protection (acres × productivity factor × coverage level × CBV).</li>
+        <li><b>Best win rate (%)</b> — share of historical years the best interval allocation returned a
+          positive net.</li>
+        <li><b>Best return per $1 of protection</b> — average net return per $1, the sweep's stored,
+          scale-free figure.</li>
+        <li><b>Best return per ACRE ($)</b> — computed as <code>best net × CBV × coverage level ×
+          productivity factor</code>; the productivity factor is your own election (RMA allows 60–150%,
+          default 100%) and appears as an input on the page.</li>
+        <li><b>Commission per acre ($)</b> — your side of the deal, not the producer's:
+          <code>CBV × coverage × productivity × Σ(allocation × premium rate) × commission %</code>, priced on
+          the optimizer's <b>recommended</b> (best-net) allocation. Agent commission is a percent of
+          <b>total</b> premium, and premium is the CBV scaled by a <i>premium rate</i> the CBV view leaves
+          out — one that varies several-fold between grids at the same coverage, so this map ranks counties
+          differently from the CBV map. Pick which AIP's rate to apply with the <b>AIP</b> selector; rates are
+          your own negotiated numbers — use <b>Commission rates…</b> to edit them.</li>
+      </ul>
+      <p>Optimizer figures come from simulating all <b>59,536 valid interval-allocation policies</b>
+        (2–5 non-adjacent two-month intervals, 5% steps, 10–60% each, summing to 100%) per grid over the RMA
+        rainfall-index history; a county shows the <b>best result among the grids it touches</b>. One
+        intended-use control (Grazing / Haying / Haying-Irrigated) drives both datasets. Counties with no data
+        for the current selection stay neutral — nothing is inferred.</p>
+    </details>
+    <span class="spacer"></span>
+    <button class="btn" id="comm-edit" title="Copy the commission-rate files out of the app and show them in Finder">Commission rates…</button>
+    <button class="btn" id="map-reload" title="Rebuild the map, picking up edited commission rates">Reload map</button>
+  </div>
+  <div id="map-notes"></div>
+  <div class="frame"><iframe id="f-map" title="PRF county map" style="height:860px"></iframe>
+    <div class="loading" hidden><span class="spin"></span><span>Building the PRF map…</span></div></div>
+</section>
+
+<!-- ============================================================ interval analyzer -->
+<section role="tabpanel" id="p-iv" aria-labelledby="t-iv">
+  <h2>Interval analyzer — per-interval heat map and recommendation</h2>
+  <details class="about">
+    <summary>About this view</summary>
+    <p>The county map ranks counties on the <b>best</b> allocation it found. This is the layer underneath:
+      every two-month interval scored on its own for one grid, so you can see which intervals are actually
+      carrying the result. Pick the metric — win rate, return per $1 of protection, or return per acre — and
+      the heat map, the year-by-year matrix and the recommendation below all follow it. <b>Window ends</b>
+      picks the last year of the lookback and <b>Lookback</b> picks 5, 10, 15 or 20 years back from it;
+      everything is re-scored over exactly those years and the allocation search is re-run, which is the
+      question a fixed illustration can't answer: does this interval pay because of the whole record, or
+      because of one wet decade — and would it have said the same thing if you had asked five years ago?
+      <b>Save client deck</b> turns the grid, county and use above, with the coverage, productivity and
+      window set in the analyzer, into a three-slide PowerPoint or PDF: a title slide, the five most consistent
+      and five best-return allocations, and a closing slide.</p>
+  </details>
+  <div class="bar">
+    <label class="f">State<select id="iv-state"></select></label>
+    <label class="f">County<select id="iv-county" class="wide"></select></label>
+    <label class="f">Grid<select id="iv-grid"></select></label>
+    <label class="f">Intended use<select id="iv-use"></select></label>
+    <span class="spacer" style="flex:1"></span>
+    <label class="f">Format<select id="iv-deck-fmt"><option value="pptx">PowerPoint</option>
+      <option value="pdf">PDF</option></select></label>
+    <button class="btn primary" id="iv-deck-save"
+      title="Uses the grid, county and use chosen here, and the coverage, productivity and window set in the analyzer below">Save client deck…</button>
+  </div>
+  <div id="iv-notes"></div>
+  <div class="frame" id="iv-frame"><iframe id="f-iv" title="Interval analyzer" style="height:900px"></iframe>
+    <div class="loading" hidden><span class="spin"></span><span>Loading the grid's interval history…</span></div></div>
+</section>
+
+<!-- ============================================================ old vs new -->
+<!-- ============================================================ all allocations -->
+<section role="tabpanel" id="p-al" aria-labelledby="t-al">
+  <h2>All allocations — every interval split for one grid, sorted</h2>
+  <details class="about">
+    <summary>About this view</summary>
+    <p>The interval analyzer shows the one allocation that wins. This is the whole search behind it:
+      every admissible allocation for the grid, county and use chosen here (2–5 non-adjacent intervals,
+      5% steps, 10% up to the county cap on each, and Jan–Feb no more than 25% from crop year 2027), with
+      its average net return per acre, win rate and return per $1 over the window you pick. <b>Sort by</b>
+      orders them by any of the three metrics, ties broken by the other; rank #1 is the analyzer's
+      recommendation. <b>Save as CSV</b> writes the rows in the optimizer workbook's columns
+      (grid_county_use, combinations, proportions, average_net_return, win rate, state).</p>
+  </details>
+  <div class="bar">
+    <label class="f">State<select id="al-state"></select></label>
+    <label class="f">County<select id="al-county" class="wide"></select></label>
+    <label class="f">Grid<select id="al-grid"></select></label>
+    <label class="f">Intended use<select id="al-use"></select></label>
+  </div>
+  <div id="al-notes"></div>
+  <div class="frame" id="al-frame"><iframe id="f-al" title="All allocations" style="height:1100px"></iframe>
+    <div class="loading" hidden><span class="spin"></span><span>Scoring every allocation…</span></div></div>
+</section>
+
+<section role="tabpanel" id="p-vt" aria-labelledby="t-vt">
+  <h2>Old vs new rainfall index — how the recommendations moved</h2>
+  <details class="about">
+    <summary>About this view</summary>
+    <p id="vt-about"></p>
+  </details>
+  <div id="vt-notes"></div>
+  <div id="vt-body">
+    <div class="bar">
+      <label class="f">Intended use<select id="vt-use"></select></label>
+      <label class="f">Coverage level<select id="vt-cov"></select></label>
+      <label class="f" title="Only the per-acre figures use it. RMA allows 60–150%.">Productivity factor (%)
+        <input id="vt-pf" type="number" min="60" max="150" step="5" value="100"></label>
+    </div>
+    <div class="tiles" id="vt-tiles"></div>
+    <div class="frame"><iframe id="f-vt" title="Old vs new grid map" style="height:720px"></iframe>
+      <div class="loading" hidden><span class="spin"></span><span>Drawing the grid map…</span></div></div>
+
+    <div class="tablebar">
+      <label class="f">State<select id="vt-state"><option>All states</option></select></label>
+      <label class="f">Find<input id="vt-find" type="search" placeholder="County, grid or allocation" style="width:260px"></label>
+      <span class="count" id="vt-count"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn primary" id="vt-save">Save this comparison (CSV)…</button>
+    </div>
+    <div class="tablewrap"><table class="grid" id="vt-table"><thead></thead><tbody></tbody></table></div>
+    <div class="pager">
+      <button class="btn" id="pg-prev">‹ Prev</button>
+      <span id="pg-label"></span>
+      <button class="btn" id="pg-next">Next ›</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ herd size -->
+<section role="tabpanel" id="p-herd" aria-labelledby="t-herd">
+  <h2>Herd size requirements — FSA acres per animal unit</h2>
+  <details class="about">
+    <summary>About this view</summary>
+    <p>How much of the insured ground a given herd size needs, by county: FSA's National Crop Table publishes
+      <b>Acres Per Animal Unit</b> — the acres of a given crop/type needed to carry one animal unit for the
+      grazing period — for every crop/type it prices for grazing under NAP/ARC-PLC. This is <b>not</b> an RMA
+      table and not scoped to PRF ground specifically (neither agency publishes a carrying-capacity figure for
+      PRF acreage as such); <b>GRASS — Native</b> is offered as the default because it is the closest available
+      analog to native rangeland and has the widest county coverage. Where a county carries more than one FSA
+      planting period for the same crop/type, this map shows the largest (most acres required) — the
+      conservative figure for a herd grazed there continuously through its leanest period — and the tooltip
+      gives the full min–max spread and how many periods it came from. Non-irrigated only: PRF's own Grazing
+      intended use has no irrigated/non-irrigated split either.</p>
+  </details>
+  <div id="herd-notes"></div>
+  <div class="frame" id="herd-frame"><iframe id="f-herd" title="Herd size map" style="height:680px"></iframe>
+    <div class="loading" hidden><span class="spin"></span><span>Building the herd size map…</span></div></div>
+</section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  var META = null;
+  var $ = function (id) { return document.getElementById(id); };
+  var qs = function (o) {
+    return Object.keys(o).map(function (k) { return k + "=" + encodeURIComponent(o[k]); }).join("&");
+  };
+  function getJSON(url) {
+    return fetch(url).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { throw new Error(t.replace(/<[^>]+>/g, "")); });
+      return r.json();
+    });
+  }
+  function note(el, kind, html) {
+    var d = document.createElement("div");
+    d.className = "note " + kind; d.innerHTML = html; el.appendChild(d);
+  }
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast.h); toast.h = setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+  function fill(sel, values, labels) {
+    sel.innerHTML = values.map(function (v, i) {
+      return '<option value="' + esc(v) + '">' + esc(labels ? labels[i] : v) + "</option>";
+    }).join("");
+  }
+  var nf = new Intl.NumberFormat("en-US");
+
+  // An iframe with a "loading" veil that lifts on load. Setting the same URL twice is a no-op.
+  function load(iframe, url) {
+    if (iframe.dataset.src === url) return;
+    iframe.dataset.src = url;
+    var veil = iframe.parentNode.querySelector(".loading");
+    veil.hidden = false;
+    iframe.onload = function () { if (iframe.dataset.src === url) veil.hidden = true; };
+    iframe.src = url;
+  }
+
+  // ---------------------------------------------------------------- tabs
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('nav [role="tab"]'));
+  var opened = {};
+  function show(tab) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      $(t.getAttribute("aria-controls")).classList.toggle("on", on);
+    });
+    var id = tab.id;
+    if (!opened[id] && META) { opened[id] = true; OPEN[id](); }
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { show(t); });
+    t.addEventListener("keydown", function (e) {
+      var j = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : null;
+      if (j === null) return;
+      var n = tabs[(j + tabs.length) % tabs.length]; n.focus(); show(n);
+    });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey && e.key >= "1" && e.key <= String(tabs.length)) { e.preventDefault(); show(tabs[+e.key - 1]); }
+  });
+
+  // ---------------------------------------------------------------- county map
+  function openMap() {
+    var c = META.counts, box = $("map-notes");
+    if (!c.cbv && !c.opt) {
+      note(box, "info", "No PRF data in this build — rebuild the app after <code>sync_engine.py</code>.");
+      return;
+    }
+    if (!c.cbv) note(box, "warn", "County Base Values (<code>prf_county</code>) are empty — the CBV and " +
+      "return-per-acre views render neutral.");
+    if (!c.opt) note(box, "warn", "The optimizer sweep (<code>prf_opt_best</code>) is empty — the win-rate, " +
+      "return-per-$1 and return-per-acre views render neutral.");
+    load($("f-map"), "/page/prf");
+  }
+  $("map-reload").addEventListener("click", function () {
+    var f = $("f-map"); f.dataset.src = ""; load(f, "/page/prf?t=" + Date.now());
+  });
+  $("comm-edit").addEventListener("click", function () {
+    if (window.pywebview && window.pywebview.api) {
+      window.pywebview.api.edit_commission().then(function (p) {
+        toast("Edit the rates in Finder, save, then press Reload map.");
+      });
+    } else {
+      toast("Commission file: " + META.commission["aip_commission.csv"]);
+    }
+  });
+
+  // ---------------------------------------------------------------- interval analyzer
+  var COUNTIES = [];
+  function openIv() {
+    if (!META.counts.intervals) {
+      note($("iv-notes"), "info", "No packed interval history in this build.");
+      $("iv-frame").hidden = true; return;
+    }
+    fill($("iv-use"), META.uses);
+    getJSON("/api/counties").then(function (rows) {
+      COUNTIES = rows;
+      var states = Array.from(new Set(rows.map(function (r) { return r[0]; }))).sort();
+      fill($("iv-state"), states);
+      $("iv-state").value = states.indexOf("WA") >= 0 ? "WA" : states[0];
+      ivState();
+    });
+  }
+  function ivState() {
+    var st = $("iv-state").value;
+    var inState = COUNTIES.filter(function (r) { return r[0] === st; });
+    fill($("iv-county"), inState.map(function (r) { return r[1]; }), inState.map(function (r) { return r[2]; }));
+    ivCounty();
+  }
+  function ivCounty() {
+    var fips = $("iv-county").value;
+    $("iv-notes").innerHTML = "";
+    getJSON("/api/grids?" + qs({ county: fips })).then(function (grids) {
+      if ($("iv-county").value !== fips) return;
+      fill($("iv-grid"), grids);
+      if (!grids.length) {
+        var o = $("iv-county").selectedOptions[0];
+        note($("iv-notes"), "info", "No PRF grids recorded for " + esc(o ? o.textContent : fips) + ".");
+        $("iv-frame").hidden = true; return;
+      }
+      ivDraw();
+    });
+  }
+  function ivDraw() {
+    $("iv-frame").hidden = false;
+    load($("f-iv"), "/page/interval?" + qs({ grid: $("iv-grid").value, county: $("iv-county").value,
+                                             use: $("iv-use").value }));
+  }
+  $("iv-state").addEventListener("change", ivState);
+  $("iv-county").addEventListener("change", ivCounty);
+  $("iv-grid").addEventListener("change", ivDraw);
+  $("iv-use").addEventListener("change", ivDraw);
+
+  // The analyzer page keeps its own coverage / productivity / window; it offers them through
+  // PRF_STATE (same origin, so the window can read the iframe). The deck is built for exactly
+  // what is on screen.
+  function ivPageState() {
+    try {
+      var w = $("f-iv").contentWindow;
+      return w && typeof w.PRF_STATE === "function" ? w.PRF_STATE() : null;
+    } catch (e) { return null; }
+  }
+  $("iv-deck-save").addEventListener("click", function () {
+    var st = ivPageState(), btn = this;
+    if (!st || !$("iv-grid").value) { toast("Wait for the analyzer to finish loading, then try again."); return; }
+    var a = { grid: $("iv-grid").value, county: $("iv-county").value, use: $("iv-use").value,
+              cov: st.coverage, pf: Math.round(st.productivity * 100), end: st.endYear,
+              len: st.lookback, fmt: $("iv-deck-fmt").value };
+    if (window.pywebview && window.pywebview.api) {
+      btn.disabled = true; toast("Building the deck…");
+      window.pywebview.api.save_deck(a.grid, a.county, a.use, a.cov, a.pf, a.end, a.len, a.fmt)
+        .then(function (r) {
+          btn.disabled = false;
+          if (r.error) toast("Could not build the deck: " + r.error);
+          else if (r.path) toast("Saved " + r.path.split("/").pop());
+        }).catch(function (e) { btn.disabled = false; toast("Could not save: " + e); });
+    } else {
+      window.location = "/api/deck?" + qs(a);
+    }
+  });
+
+  // ---------------------------------------------------------------- old vs new
+  var COVS = { "90%": "0.9", "85%": "0.85", "80%": "0.8", "75%": "0.75", "70%": "0.7" };
+  var VT = null, SORT = { col: null, dir: 1 }, PAGE = 0, PER = 100, VIEW = [];
+  var FMT = {
+    "Grid": function (v) { return String(v); },
+    "Cap %": function (v) { return v + "%"; },
+    "CBV $/ac": function (v) { return "$" + v.toFixed(2); },
+    "Win rate old %": function (v) { return v.toFixed(1) + "%"; },
+    "Win rate new %": function (v) { return v.toFixed(1) + "%"; },
+    "Win rate change (pts)": function (v) { return (v >= 0 ? "+" : "") + v.toFixed(1); },
+    "Return per $1 old": function (v) { return "$" + v.toFixed(3); },
+    "Return per $1 new": function (v) { return "$" + v.toFixed(3); },
+    "Return per $1 change": function (v) { return (v >= 0 ? "+" : "") + v.toFixed(3); },
+    "Return per acre old $": function (v) { return "$" + v.toFixed(2); },
+    "Return per acre new $": function (v) { return "$" + v.toFixed(2); },
+    "Return per acre change $": function (v) { return (v >= 0 ? "+" : "") + v.toFixed(2); }
+  };
+  function vtArgs() {
+    var pf = Math.round(+$("vt-pf").value || 100);
+    pf = Math.min(150, Math.max(60, pf));
+    $("vt-pf").value = pf;
+    return { use: $("vt-use").value, cov: COVS[$("vt-cov").value], pf: pf };
+  }
+  function openVt() {
+    var m = META.vintage || {};
+    var oldL = m.old_label || "the previous sweep", newL = m.new_label || "the current sweep";
+    $("vt-about").innerHTML = "RMA replaced the PRF rainfall index for the 2027 crop year, and every other " +
+      "view was re-swept on the new series. This section sets the optimizer's answer on the <b>old data set</b> (" +
+      esc(oldL) + ") beside its answer on the <b>new data set</b> (" + esc(newL) + ") for <b>every grid</b>, on " +
+      "the three metrics: <b>best win rate</b>, <b>best return per $1 of protection</b> and <b>best return per " +
+      "acre</b> (best net × County Base Value × coverage × productivity factor). The map shades each grid by the " +
+      "change, or by either data set on one shared scale; the table lists every grid in every county it " +
+      "touches, with both recommended allocations. Both data sets are priced with the current County Base " +
+      "Value, so a per-acre change is the index and premium-rate change alone, and each county reads the " +
+      "result swept under its own maximum percent of value. The old results appear here for comparison " +
+      "only — no recommendation anywhere else in the app reads them.";
+    if (!META.vintage || !Object.keys(META.vintage).length) {
+      note($("vt-notes"), "info", "No previous sweep ships in this build — keep <code>prf_opt_best_pre_ncei</code> " +
+        "in the working catalog, rebuild the app DB with <code>scripts/build_app_db.py</code>, then re-sync.");
+      $("vt-body").hidden = true; return;
+    }
+    fill($("vt-use"), META.uses);
+    fill($("vt-cov"), META.coverages);
+    vtLoad();
+  }
+  function vtLoad() {
+    var a = vtArgs();
+    load($("f-vt"), "/page/vintage?" + qs(a));
+    $("vt-tiles").innerHTML = '<div class="tile"><div class="k">Comparing the old and new data sets…</div></div>';
+    getJSON("/api/vintage?" + qs(a)).then(function (t) {
+      var b = vtArgs(); if (b.use !== a.use || b.cov !== a.cov || b.pf !== a.pf) return;
+      VT = t;
+      var keep = $("vt-state").value;
+      fill($("vt-state"), ["All states"].concat(t.states));
+      $("vt-state").value = t.states.indexOf(keep) >= 0 ? keep : "All states";
+      vtTiles(t.stats);
+      PAGE = 0; vtFilter();
+    }).catch(function (e) { $("vt-tiles").innerHTML = ""; note($("vt-notes"), "warn", esc(e.message)); });
+  }
+  function vtTiles(s) {
+    var pct = function (x) { return x == null ? "—" : Math.round(x * 100) + "%"; };
+    var tile = function (k, v, d, dcls, h, title) {
+      return '<div class="tile" title="' + esc(title || "") + '"><div class="k">' + k + '</div><div class="v">' + v +
+        "</div>" + (d ? '<div class="d ' + dcls + '">' + d + "</div>" : "") + '<div class="h">' + h + "</div></div>";
+    };
+    var html = tile("Grids in both data sets", nf.format(s.both), "", "",
+      nf.format(s.old_only) + " only in old · " + nf.format(s.new_only) + " only in new",
+      nf.format(s.old_only) + " grids have a result only in the old data (retired from the grid roster, or the " +
+      "use was not offered) and " + nf.format(s.new_only) + " only in the new.");
+    [["win", "Best win rate — median grid", function (v) { return v.toFixed(1) + "%"; },
+      function (v) { return (v >= 0 ? "+" : "") + v.toFixed(1) + " pts"; }, "grids"],
+     ["net", "Best return per $1 — median grid", function (v) { return "$" + v.toFixed(3); },
+      function (v) { return (v >= 0 ? "+" : "") + v.toFixed(3); }, "grids"],
+     ["acre", "Best return per acre — median county", function (v) { return "$" + v.toFixed(2); },
+      function (v) { return (v >= 0 ? "+" : "") + v.toFixed(2); }, "grid × county rows"]
+    ].forEach(function (m) {
+      var d = s[m[0]];
+      var ch = d.median_change;
+      var cls = ch == null ? "" : ch > 1e-9 ? "up" : ch < -1e-9 ? "down" : "flat";
+      var arrow = ch == null ? "" : ch > 1e-9 ? "↑ " : ch < -1e-9 ? "↓ " : "";
+      html += tile(m[1], d.new_median == null ? "—" : m[2](d.new_median),
+        ch == null ? "" : arrow + m[3](ch), cls,
+        (d.old_median != null ? "Old data " + m[2](d.old_median) + " · " : "") +
+        "higher on " + nf.format(d.better) + ", lower on " + nf.format(d.worse),
+        (d.old_median != null ? "Old data median " + m[2](d.old_median) + ". " : "") +
+        "The new data scores higher on " + nf.format(d.better) + ", lower on " + nf.format(d.worse) +
+        " and the same on " + nf.format(d.same) + " " + m[4] + ". The arrow is the median change.");
+    });
+    html += tile("Best-return allocation changed", pct(s.net_alloc_changed), "", "",
+      "Best win-rate allocation changed on " + pct(s.win_alloc_changed),
+      "Share of grids whose recommended best-return allocation is different on the new data.");
+    $("vt-tiles").innerHTML = html;
+  }
+  function vtFilter() {
+    if (!VT) return;
+    var cols = VT.columns, si = cols.indexOf("State");
+    var st = $("vt-state").value, q = $("vt-find").value.trim().toLowerCase();
+    VIEW = VT.rows.filter(function (r) {
+      if (st !== "All states" && r[si] !== st) return false;
+      if (!q) return true;
+      for (var i = 0; i < r.length; i++) if (r[i] != null && String(r[i]).toLowerCase().indexOf(q) >= 0) return true;
+      return false;
+    });
+    if (SORT.col != null) {
+      var c = SORT.col, dir = SORT.dir;
+      VIEW.sort(function (a, b) {
+        var x = a[c], y = b[c];
+        if (x == null && y == null) return 0;
+        if (x == null) return 1;           // blanks last, whichever way
+        if (y == null) return -1;
+        return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * dir;
+      });
+    }
+    var pages = Math.max(1, Math.ceil(VIEW.length / PER));
+    PAGE = Math.min(PAGE, pages - 1);
+    $("vt-count").textContent = nf.format(VIEW.length) + " of " + nf.format(VT.rows.length) + " grid × county rows";
+    vtRender();
+  }
+  function vtRender() {
+    var cols = VT.columns;
+    $("vt-table").tHead.innerHTML = "<tr>" + cols.map(function (c, i) {
+      var a = SORT.col === i ? ' <span class="arrow">' + (SORT.dir > 0 ? "▲" : "▼") + "</span>" : "";
+      return '<th data-i="' + i + '">' + esc(c) + a + "</th>";
+    }).join("") + "</tr>";
+    var start = PAGE * PER, rows = VIEW.slice(start, start + PER);
+    $("vt-table").tBodies[0].innerHTML = rows.map(function (r) {
+      return "<tr>" + r.map(function (v, i) {
+        var f = FMT[cols[i]];
+        if (v == null) return "<td></td>";
+        return f ? '<td class="num">' + esc(f(v)) + "</td>" : "<td>" + esc(v) + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+    var pages = Math.max(1, Math.ceil(VIEW.length / PER));
+    $("pg-label").textContent = "Page " + (PAGE + 1) + " of " + nf.format(pages);
+    $("pg-prev").disabled = PAGE === 0;
+    $("pg-next").disabled = PAGE >= pages - 1;
+  }
+  $("vt-table").addEventListener("click", function (e) {
+    var th = e.target.closest("th"); if (!th) return;
+    var i = +th.dataset.i;
+    SORT = { col: i, dir: SORT.col === i ? -SORT.dir : 1 };
+    PAGE = 0; vtFilter();
+  });
+  $("pg-prev").addEventListener("click", function () { PAGE--; vtRender(); });
+  $("pg-next").addEventListener("click", function () { PAGE++; vtRender(); });
+  $("vt-state").addEventListener("change", function () { PAGE = 0; vtFilter(); });
+  $("vt-find").addEventListener("input", function () { PAGE = 0; vtFilter(); });
+  ["vt-use", "vt-cov"].forEach(function (id) { $(id).addEventListener("change", vtLoad); });
+  $("vt-pf").addEventListener("change", vtLoad);
+  $("vt-save").addEventListener("click", function () {
+    var a = vtArgs(), st = $("vt-state").value;
+    if (window.pywebview && window.pywebview.api) {
+      window.pywebview.api.save_vintage_csv(a.use, a.cov, a.pf, st).then(function (p) {
+        if (p) toast("Saved " + p.split("/").pop());
+      }).catch(function (e) { toast("Could not save: " + e); });
+    } else {
+      window.location = "/api/vintage.csv?" + qs({ use: a.use, cov: a.cov, pf: a.pf, state: st });
+    }
+  });
+
+  // ---------------------------------------------------------------- herd size
+  function openHerd() {
+    if (!META.counts.herd) {
+      note($("herd-notes"), "info", "No FSA grazing data in this build.");
+      $("herd-frame").hidden = true; return;
+    }
+    load($("f-herd"), "/page/herd");
+  }
+
+  // ---------------------------------------------------------------- all allocations
+  // Its own State / County / Grid / Use pickers, the same lists the analyzer uses.
+  function openAl() {
+    if (!META.counts.intervals) {
+      note($("al-notes"), "info", "No packed interval history in this build.");
+      $("al-frame").hidden = true; return;
+    }
+    fill($("al-use"), META.uses);
+    (COUNTIES.length ? Promise.resolve(COUNTIES) : getJSON("/api/counties")).then(function (rows) {
+      COUNTIES = rows;
+      var states = Array.from(new Set(rows.map(function (r) { return r[0]; }))).sort();
+      fill($("al-state"), states);
+      // start where the analyzer is, if it has been opened
+      var st = $("iv-state").value || (states.indexOf("WA") >= 0 ? "WA" : states[0]);
+      $("al-state").value = st;
+      alState($("iv-county").value, $("iv-grid").value, $("iv-use").value);
+    });
+  }
+  function alState(county, grid, use) {
+    var st = $("al-state").value;
+    var inState = COUNTIES.filter(function (r) { return r[0] === st; });
+    fill($("al-county"), inState.map(function (r) { return r[1]; }), inState.map(function (r) { return r[2]; }));
+    if (county && inState.some(function (r) { return r[1] === county; })) $("al-county").value = county;
+    if (use) $("al-use").value = use;
+    alCounty(grid);
+  }
+  function alCounty(grid) {
+    var fips = $("al-county").value;
+    $("al-notes").innerHTML = "";
+    getJSON("/api/grids?" + qs({ county: fips })).then(function (grids) {
+      if ($("al-county").value !== fips) return;
+      fill($("al-grid"), grids);
+      if (grid && grids.map(String).indexOf(String(grid)) >= 0) $("al-grid").value = grid;
+      if (!grids.length) {
+        note($("al-notes"), "info", "No PRF grids recorded for this county.");
+        $("al-frame").hidden = true; return;
+      }
+      alDraw();
+    });
+  }
+  function alDraw() {
+    $("al-frame").hidden = false;
+    load($("f-al"), "/page/allocations?" + qs({ grid: $("al-grid").value, county: $("al-county").value,
+                                                use: $("al-use").value }));
+  }
+  $("al-state").addEventListener("change", function () { alState(); });
+  $("al-county").addEventListener("change", function () { alCounty(); });
+  $("al-grid").addEventListener("change", alDraw);
+  $("al-use").addEventListener("change", alDraw);
+  window.PRF_TOAST = toast;      // the allocations page reports "Saved …" through the shell
+
+  var OPEN = { "t-map": openMap, "t-iv": openIv, "t-al": openAl, "t-vt": openVt, "t-herd": openHerd };
+
+  // ---------------------------------------------------------------- boot
+  getJSON("/api/meta").then(function (m) {
+    META = m;
+    var s = m.sync || {};
+    var bits = [];
+    if (s.source_db_modified) bits.push("Data built " + s.source_db_modified.slice(0, 10));
+    if (s.synced_at) bits.push("synced " + s.synced_at.slice(0, 10) + (s.source_commit ? " from aip_products " +
+      s.source_commit + ((s.source_uncommitted || []).length ? "+" : "") : ""));
+    $("stamp").textContent = bits.join(" · ");
+    $("stamp").title = (s.source_uncommitted || []).length
+      ? "Synced from uncommitted changes in: " + s.source_uncommitted.join(", ") : "";
+    show(tabs.filter(function (t) { return t.getAttribute("aria-selected") === "true"; })[0]);
+  }).catch(function (e) {
+    note($("map-notes"), "warn", "Could not reach the app's data: " + esc(e.message));
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f7bf0"/><stop offset="1" stop-color="#1450b8"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <path d="M512 172 C 476 226, 454 254, 454 283 A 58 58 0 0 0 570 283 C 570 254, 548 226, 512 172 Z" fill="#ffffff"/>
+  <g transform="translate(267,367)">
+    <rect x="0"   y="0"   width="150" height="150" rx="20" fill="#e7f5e1"/>
+    <rect x="170" y="0"   width="150" height="150" rx="20" fill="#9fd48a"/>
+    <rect x="340" y="0"   width="150" height="150" rx="20" fill="#4fa85a"/>
+    <rect x="0"   y="170" width="150" height="150" rx="20" fill="#9fd48a"/>
+    <rect x="170" y="170" width="150" height="150" rx="20" fill="#2d7d3f"/>
+    <rect x="340" y="170" width="150" height="150" rx="20" fill="#e7f5e1"/>
+    <rect x="0"   y="340" width="150" height="150" rx="20" fill="#4fa85a"/>
+    <rect x="170" y="340" width="150" height="150" rx="20" fill="#e7f5e1"/>
+    <rect x="340" y="340" width="150" height="150" rx="20" fill="#9fd48a"/>
+  </g>
+</svg>

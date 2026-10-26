@@ -1,0 +1,8 @@
+# local secrets never leave this machine
+web/.streamlit/secrets.toml
+# build output and local previews
+build/*.pyc
+__pycache__/
+*.tmp
+deck_preview/
+.DS_Store

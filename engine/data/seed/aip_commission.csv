@@ -1,0 +1,120 @@
+# aip_commission.csv - agency commission rate, per AIP, per PRODUCT, per region.
+#
+# *** THESE ARE REGULATORY CEILINGS, NOT YOUR RATE CARD, AND NOT AN ESTIMATE. ***
+#
+# METHODOLOGY, applied the same way to every product:
+#   1. find the product's A&O subsidy rate in ITS OWN governing reinsurance agreement
+#   2. apply that agreement's own agent-compensation cap
+#   3. if either is unpublished, leave it blank rather than borrow from the other agreement
+#
+# CROP SIDE - Standard Reinsurance Agreement (PRF, ROWCROP)
+#
+#   A&O from CRS R45291 Table 2: APH 21.9% | area plans not widely available in 2008 20.1%
+#   | revenue 18.5% | area plans generally 12.0% | CAT LAE 6.0%
+#
+#   Cap 80%, 2026 SRA III(a)(4)(B): "...shall not pay total compensation in excess of 80
+#   percent of the total amount of A&O subsidy and CAT LAE ... for such State." 100% only
+#   where the AIP earned an underwriting gain that year (III(a)(4)(C)).
+#
+#     PRF      20.1% x 0.80 = 16.08%   Rainfall Index was a limited pilot in 2008, so it takes
+#                                      the 20.1% area row, not the 12.0% one. 16% is also what
+#                                      an operating agency reports being paid - two routes,
+#                                      one number.
+#     ROWCROP  20.1% x 0.80 = 16.08%   SCO/ECO/STAX/MCO are county-index AREA plans first sold
+#                                      2015-2024. NOT the 18.5% revenue row, which belongs to
+#                                      the underlying RP/YP policy this tool does not analyse.
+#
+# LIVESTOCK SIDE - Livestock Price Reinsurance Agreement (LRP, DRP, LGM)
+#
+#   2027 LPRA IV(b)(2)(D), verbatim: "A&O subsidy for eligible livestock price insurance
+#   contracts will be 22.2 percent, or a percent approved by the Board, of the net book
+#   premium ... (This amount will increase to 23.35 percent for states with a loss ratio
+#   greater than 120 percent of the total net book premium written in the state by all
+#   approved insurance providers)."
+#
+#   AND THE LPRA CONTAINS NO AGENT-COMPENSATION CAP. It defines "Compensation" in the same
+#   words the SRA does, but the 80 percent limit, the scheme-or-device language and the
+#   "shall not pay" clause are all absent - searched for each explicitly. The 80% cap is an
+#   SRA provision and the SRA does not govern these products.
+#
+#     LRP/DRP/LGM  22.2% x 1.00 = 22.20%
+#
+#   So the livestock ceiling is the FULL A&O the AIP receives, not 80% of it, and it is
+#   HIGHER than the crop ceiling. Two caveats on that. Absence from the LPRA is not proof no
+#   limit exists anywhere - FCIC procedures or 7 CFR could impose one this file has not found.
+#   And an AIP paying out its entire delivery subsidy in commission is an upper bound, not a
+#   practice: real livestock rates are widely reported below crop rates. If the SRA's 80% were
+#   applied by analogy the figure would be 17.76%.
+#
+#   23.35% (high-loss-ratio states) is NOT used: it is conditional on a state-level loss ratio
+#   this file does not track, and using it everywhere would overstate.
+#
+# The processing allowance the SRA separately permits (up to 5% of A&O, not counted as
+# compensation) is deliberately EXCLUDED throughout.
+#
+# THE CAP BINDS BY STATE across an AIP's whole book, not per policy. Read every agency figure
+# the app derives from this file as "at most".
+#
+# regions : percent of TOTAL premium (the subsidised premium, not the producer's share)
+# blank   : unknown. NOT zero - the app renders those differently.
+aip_code,aip_name,product,Pacific,Mountain,Central,Eastern,notes
+RH,ACE American Insurance Company (Rain and Hail),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+WN,American Agri-Business Insurance Company (AgriSompo),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+FA,American Agricultural Insurance Company (AFBIS),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+CP,Clear Blue Insurance Company (Precision Risk Mgmt),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+CM,Country Mutual Insurance Company (COUNTRY Financial),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+FH,Farmers Mutual Hail Insurance Company of Iowa,PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+GA,Great American Insurance Company,PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+HU,Hudson Insurance Company,PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+NA,NAU Country Insurance Company,PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+PS,Palomar Specialty Insurance Company,PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+PL,Producers Agriculture Insurance Company (ProAg),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+EF,Rural Community Insurance Company (RCIS),PRF,16.08,16.08,16.08,16.08,SRA: A&O 20.1% x cap 80% = 16.08% - CITED (area plan; Rainfall Index a limited pilot in 2008)
+RH,ACE American Insurance Company (Rain and Hail),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+WN,American Agri-Business Insurance Company (AgriSompo),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+FA,American Agricultural Insurance Company (AFBIS),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+CP,Clear Blue Insurance Company (Precision Risk Mgmt),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+CM,Country Mutual Insurance Company (COUNTRY Financial),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+FH,Farmers Mutual Hail Insurance Company of Iowa,ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+GA,Great American Insurance Company,ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+HU,Hudson Insurance Company,ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+NA,NAU Country Insurance Company,ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+PS,Palomar Specialty Insurance Company,ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+PL,Producers Agriculture Insurance Company (ProAg),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+EF,Rural Community Insurance Company (RCIS),ROWCROP,16.08,16.08,16.08,16.08,"SRA: A&O 20.1% x cap 80% = 16.08% - CITED (SCO/ECO/STAX/MCO are area plans, first sold 2015-2024)"
+RH,ACE American Insurance Company (Rain and Hail),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+WN,American Agri-Business Insurance Company (AgriSompo),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+FA,American Agricultural Insurance Company (AFBIS),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+CP,Clear Blue Insurance Company (Precision Risk Mgmt),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+CM,Country Mutual Insurance Company (COUNTRY Financial),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+FH,Farmers Mutual Hail Insurance Company of Iowa,LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+GA,Great American Insurance Company,LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+HU,Hudson Insurance Company,LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+NA,NAU Country Insurance Company,LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+PS,Palomar Specialty Insurance Company,LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+PL,Producers Agriculture Insurance Company (ProAg),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+EF,Rural Community Insurance Company (RCIS),LRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+RH,ACE American Insurance Company (Rain and Hail),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+WN,American Agri-Business Insurance Company (AgriSompo),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+FA,American Agricultural Insurance Company (AFBIS),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+CP,Clear Blue Insurance Company (Precision Risk Mgmt),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+CM,Country Mutual Insurance Company (COUNTRY Financial),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+FH,Farmers Mutual Hail Insurance Company of Iowa,DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+GA,Great American Insurance Company,DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+HU,Hudson Insurance Company,DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+NA,NAU Country Insurance Company,DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+PS,Palomar Specialty Insurance Company,DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+PL,Producers Agriculture Insurance Company (ProAg),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+EF,Rural Community Insurance Company (RCIS),DRP,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+RH,ACE American Insurance Company (Rain and Hail),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+WN,American Agri-Business Insurance Company (AgriSompo),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+FA,American Agricultural Insurance Company (AFBIS),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+CP,Clear Blue Insurance Company (Precision Risk Mgmt),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+CM,Country Mutual Insurance Company (COUNTRY Financial),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+FH,Farmers Mutual Hail Insurance Company of Iowa,LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+GA,Great American Insurance Company,LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+HU,Hudson Insurance Company,LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+NA,NAU Country Insurance Company,LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+PS,Palomar Specialty Insurance Company,LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+PL,Producers Agriculture Insurance Company (ProAg),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)
+EF,Rural Community Insurance Company (RCIS),LGM,22.2,22.2,22.2,22.2,LPRA: A&O 22.2% x cap 100% = 22.2% - CITED (LPRA IV(b)(2)(D); no compensation cap in the LPRA)

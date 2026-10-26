@@ -1,0 +1,27 @@
+# commission_by_timezone.csv — REGIONAL commission rate, percent of TOTAL premium.
+#
+# *** THE VALUES SHIPPED HERE ARE SAMPLE DATA, NOT A REAL RATE CARD. ***
+# They exist so the PRF map's "commission per acre" metric renders something with real
+# geographic variation while the actual negotiated rates in aip_commission.csv are still
+# blank. Delete this file (or blank the column) once real per-AIP rates are entered.
+#
+# WHY THIS FILE EXISTS SEPARATELY FROM aip_commission.csv:
+# aip_commission.csv carries ONE rate per AIP, which has no geographic dimension — a single
+# rate makes the commission map an exact rescale of the premium map, identical in shape. A
+# regional rate is what makes commission rank counties differently from premium alone.
+#
+# RESOLUTION ORDER, per county (see prfpage.commission_pct_for):
+#   1. the zone rate below, for the county's time zone
+#   2. otherwise the selected AIP's commission_pct from aip_commission.csv
+#   3. otherwise no rate — the county renders "no rate set", never 0
+#
+# Zone is assigned by STATE, using each state's PREDOMINANT time zone. Thirteen states
+# straddle a zone line (TX, KS, NE, ND, SD and FL split Central/Mountain or Central/Eastern;
+# ID and OR split Pacific/Mountain; MI, IN, KY and TN split Eastern/Central) and every county
+# in them is treated as being in the majority zone. That is a deliberate simplification
+# appropriate to sample data — do not read a real boundary off this map.
+zone,commission_pct,notes
+Pacific,20,sample
+Mountain,18,sample
+Central,16,sample
+Eastern,14,sample

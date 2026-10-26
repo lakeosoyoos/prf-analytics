@@ -1,0 +1,6 @@
+# Runtime: the window, and requests (imported at load time by the copied src/http.py).
+pywebview>=6.2
+requests>=2.31
+# Build + tests
+pyinstaller>=6.10
+pytest>=8

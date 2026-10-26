@@ -1,0 +1,4 @@
+# PRF Analytics (web) — runtime only. The engine needs nothing else: it is the standard library
+# plus requests (imported at load time by the copied src/http.py).
+streamlit==1.60.0
+requests>=2.31
