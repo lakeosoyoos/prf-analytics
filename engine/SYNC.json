@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-10-26T13:39:27",
+  "synced_at": "2026-10-27T09:46:09",
   "source_repo": "/Users/rhondacolbert/aip_products",
   "source_commit": "4f4979c",
   "source_uncommitted": [
@@ -45,10 +45,10 @@
     "src/prfbulk.py": "de3d13a8f444e10db4a5ed10b67b4f9485340a972895c9f46ea01c6d09689ae4",
     "src/prfpage.py": "896e7eadeff8da6570ce7c59fe4dd08f9fa048ec83cd9d147b38c93546f143df",
     "src/prfvintagepage.py": "9085974e01849d1fa331d5b1d78a7e1638ac7ce145b36fc3700bbf403ec879e9",
-    "src/prfintervalpage.py": "81d7f38150b3c13af44cd7e3ab2ce36e3f71d7c7c38cda53883491d8a38585b3",
+    "src/prfintervalpage.py": "9d327e5da4de5f62f0955e68e1842412308f8fbf2a1201bcf2430a269d7481df",
     "src/prfintervals.py": "9a080cdc14b751b93a5d984e84a5233b13927e9eab17d01d1b006ca3811c8f17",
     "src/prfherdpage.py": "4fb170774f4a94f85145a963d91ab3b8c21da58ecb1dbca08e6e694141a563ab",
-    "src/prfdeck.py": "a3bf3c58e950b04929ecc44a0014b5dee7657616576c52f641bd42da21810074",
+    "src/prfdeck.py": "f8c0cf17d6d8745127930bc928caefadb0bd46eeb3f0995cfd99fec6cae9a996",
     "src/prfdeckpdf.py": "7464a826e4329a016818f005cbe7a34c8a3287310e29c8ac200e55762220fce9",
     "src/prfallocpage.py": "e8b30f3522791eea9630e8f431c2eee0e250ee6c01d3e708df3406e0923cd874",
     "src/prfopt.py": "generated from aa12ddfd01ce2bbeca360b3ea358a46a8eadf85b35c338f5c6a912da40b981e5",

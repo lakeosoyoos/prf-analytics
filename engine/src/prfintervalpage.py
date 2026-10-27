@@ -284,6 +284,16 @@ _TEMPLATE = r"""<!DOCTYPE html>
     font: inherit; font-size: 12.5px; padding: 3px 5px; color: var(--ink);
     border: 1px solid var(--baseline); border-radius: 6px; background: var(--surface);
   }
+  .stepper { display: inline-flex; align-items: stretch; }
+  .stepper input { width: 64px; border-radius: 0; text-align: center; }
+  .stepper button {
+    font: inherit; font-size: 10px; padding: 0 8px; cursor: pointer; color: var(--ink-2);
+    border: 1px solid var(--baseline); background: var(--surface);
+  }
+  .stepper button:first-child { border-radius: 6px 0 0 6px; border-right: none; }
+  .stepper button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+  .stepper button:hover:not(:disabled) { background: var(--grid); color: var(--ink); }
+  .stepper button:disabled { opacity: 0.35; cursor: default; }
   .lookout { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
   section { padding: 12px 16px 0; }
   h2 { font-size: 12px; font-weight: 650; color: var(--ink-2); text-transform: uppercase;
@@ -332,6 +342,9 @@ _TEMPLATE = r"""<!DOCTYPE html>
 
 <div class="bar">
   <label>Metric <span class="seg" id="metricSeg"></span></label>
+  <label title="Which allocation to show, by its rank on the chosen metric (1 = the best)">Rank
+    <span class="stepper"><button type="button" id="rankUp" title="Up the list (toward #1)">&#9650;</button><input type="number" id="rankIn" min="1" step="1" value="1"><button type="button" id="rankDown" title="Down the list">&#9660;</button></span>
+    <span class="lookout" id="rankOut"></span></label>
   <label>Coverage <span class="seg" id="covSeg"></span></label>
   <label>Window ends <select id="endYear"></select></label>
   <label>Lookback <select id="lookLen"></select>
@@ -598,10 +611,24 @@ var DATA = __PAYLOAD__;
   }
 
   function recommend(series) {
+    var scored = scoreAll(series), rows = ranked(scored);
+    if (!rows.length) return null;
+    var rank = Math.min(wantedRank(), rows.length), r = rows[rank - 1];
+    return {avg: r.avg, win: r.win, idxs: r.idxs, props: r.props, rank: rank,
+            of: rows.length, n_policies: scored.n};
+  }
+
+  // Every allocation is scored once per coverage and window, then sorted once per metric, so
+  // stepping through ranks (or changing productivity) costs nothing.
+  var SCORED = {key: null, rows: [], n: 0}, RANKED = {key: null, rows: []};
+
+  function scoreAll(series) {
+    var key = coverage + "|" + startIdx() + "|" + endIdx() + "|" + DATA.use;
+    if (SCORED.key === key) return SCORED;
     var usable = {};
     IV.forEach(function (iv) { if (series[iv]) usable[iv] = 1; });
     var cap = DATA.cap || 60;
-    var best = null, n = 0;
+    var rows = [], n = 0;
     combos(usable).forEach(function (idxs) {
       var ws = idxs.map(function (i) { return series[IV[i]]; });
       compositionsForCombo(idxs, cap).forEach(function (props) {
@@ -619,23 +646,49 @@ var DATA = __PAYLOAD__;
           if (net > 0) wins++;
         }
         if (!counted) return;
-        var avg = total / counted, win = wins / counted;
-        // Return per acre is return per $1 times a constant (the protection), so it ranks
-        // identically — only the printed units differ.
-        var score = metric === "win" ? win : avg;
-        // TIE-BREAK ON THE OTHER METRIC, matching src/prfopt.rank_by_win_rate (sorts win
-        // rate, then average net) and rank_by_avg_net_return (average net, then win rate).
-        // Breaking on the same quantity being scored would never fire, and the page would
-        // pick a different winner from the sweep whenever two allocations tie.
-        var tie = metric === "win" ? avg : win;
-        if (best === null || score > best.score + 1e-12 ||
-            (Math.abs(score - best.score) <= 1e-12 && tie > best.tie + 1e-12)) {
-          best = {score: score, tie: tie, avg: avg, win: win, idxs: idxs, props: props};
-        }
+        rows.push({avg: total / counted, win: wins / counted, idxs: idxs, props: props,
+                   seq: rows.length});
       });
     });
-    if (best) best.n_policies = n;
-    return best;
+    SCORED = {key: key, rows: rows, n: n};
+    RANKED = {key: null, rows: []};
+    return SCORED;
+  }
+
+  // Return per acre is return per $1 times a constant (the protection), so it ranks
+  // identically — only the printed units differ.
+  // TIE-BREAK ON THE OTHER METRIC, matching src/prfopt.rank_by_win_rate (sorts win rate, then
+  // average net) and rank_by_avg_net_return (average net, then win rate), then enumeration
+  // order — the All Allocations table's order exactly, so rank N here is row N there.
+  function ranked(scored) {
+    var byWin = metric === "win", key = byWin ? "win" : "avg";
+    if (RANKED.key === key) return RANKED.rows;
+    var rows = scored.rows.slice().sort(function (a, b) {
+      var sa = byWin ? a.win : a.avg, sb = byWin ? b.win : b.avg;
+      if (Math.abs(sa - sb) > 1e-12) return sb - sa;
+      var ta = byWin ? a.avg : a.win, tb = byWin ? b.avg : b.win;
+      if (Math.abs(ta - tb) > 1e-12) return tb - ta;
+      return a.seq - b.seq;
+    });
+    RANKED = {key: key, rows: rows};
+    return rows;
+  }
+
+  // Rank N on the chosen metric: 1 is the recommendation; any other number shows that row of
+  // the All Allocations table instead, and everything below follows it.
+  el("rankIn").addEventListener("input", draw);
+  el("rankIn").addEventListener("change", draw);
+  // Up moves toward #1 (a better rank), down moves down the list.
+  function stepRank(d) {
+    var r = wantedRank() + d, top = +el("rankIn").max || r;
+    el("rankIn").value = Math.max(1, Math.min(top, r));
+    draw();
+  }
+  el("rankUp").addEventListener("click", function () { stepRank(-1); });
+  el("rankDown").addEventListener("click", function () { stepRank(1); });
+  function wantedRank() {
+    var v = parseInt(el("rankIn").value, 10);
+    return isFinite(v) && v >= 1 ? v : 1;
   }
 
   // ---------------- render
@@ -732,6 +785,10 @@ var DATA = __PAYLOAD__;
 
     // -- recommendation
     var best = recommend(series);
+    el("rankOut").textContent = best ? "of " + best.of.toLocaleString() : "";
+    el("rankIn").max = best ? best.of : 1;
+    el("rankUp").disabled = !best || best.rank <= 1;
+    el("rankDown").disabled = !best || best.rank >= best.of;
     drawRecommendation(best, yrs);
 
     // -- year x interval matrix, coloured by that year's net contribution
@@ -749,8 +806,11 @@ var DATA = __PAYLOAD__;
     var chips = best.idxs.map(function (ix, j) {
       return "<span class='chip'>" + esc(LBL[IV[ix]] || IV[ix]) + " &middot; " + best.props[j] + "%</span>";
     }).join("");
-    var h = "<h3>Recommended allocation &mdash; best " + esc(METRICS[metric].label.toLowerCase()) +
-            " over " + yrs.length + " years (" + yrs[0] + "–" + yrs[yrs.length - 1] + ")</h3>";
+    var over = " over " + yrs.length + " years (" + yrs[0] + "–" + yrs[yrs.length - 1] + ")";
+    var h = best.rank === 1
+      ? "<h3>Recommended allocation &mdash; best " + esc(METRICS[metric].label.toLowerCase()) + over + "</h3>"
+      : "<h3>Rank #" + best.rank.toLocaleString() + " of " + best.of.toLocaleString() +
+        " by " + esc(METRICS[metric].label.toLowerCase()) + over + "</h3>";
     h += "<div class='alloc'>" + chips + "</div>";
     h += "<div class='stats'>" +
          "<span>Win rate <b>" + (best.win * 100).toFixed(1) + "%</b></span>" +
@@ -766,7 +826,9 @@ var DATA = __PAYLOAD__;
     // scored ONE window (sw.y0..sw.y1); any other window has no stored answer to compare with.
     var sw = (DATA.sweep || {})[coverage];
     var first = yrs[0], last = yrs[yrs.length - 1];
-    if (sw && +sw.y0 === first && +sw.y1 === last) {
+    if (best.rank !== 1) {
+      // only rank 1 has a stored answer to check against
+    } else if (sw && +sw.y0 === first && +sw.y1 === last) {
       var combo = metric === "win" ? sw.win_combo : sw.net_combo;
       var props = metric === "win" ? sw.win_props : sw.net_props;
       var mine = best.idxs.map(function (ix, j) { return IV[ix] + ":" + best.props[j]; }).join(" ");
@@ -839,8 +901,8 @@ var DATA = __PAYLOAD__;
       "Cells show the RAINFALL INDEX for that interval and year; the colour is what that " +
       "year's net return per $1 of protection would have been at " +
       Math.round(parseFloat(coverage) * 100) + "% coverage — green where the indemnity " +
-      "beat the premium, warm where it did not. <b>Elected</b> applies the recommended " +
-      "allocation above to each year. Index values are stored to 0.005 of normal wherever a payout is possible (below " +
+      "beat the premium, warm where it did not. <b>Elected</b> applies the " +
+      "allocation above (the chosen rank) to each year. Index values are stored to 0.005 of normal wherever a payout is possible (below " +
       "0.90) and in coarser steps above it, so <b>Avg index</b> can differ from RMA&rsquo;s by " +
       "about a hundredth, and where two allocations are nearly tied on <b>Win rate</b> the " +
       "pick can differ from an exact calculation by about a year in twenty (return per $1 " +
@@ -855,7 +917,7 @@ var DATA = __PAYLOAD__;
   var sub =
     esc(DATA.use) + " &middot; County Base Value " +
     (DATA.cbv === null || DATA.cbv === undefined ? "not published" : "$" + DATA.cbv.toFixed(2) + "/acre") +
-    " &middot; rates for RY" + DATA.rate_year +
+    " &middot; CY" + DATA.rate_year + " rates" +
     " &middot; index " + YEARS[0] + "–" + YEARS[YEARS.length - 1] +
     (DATA.index_source ? " (" + esc(DATA.index_source) + ")" : "") +
     " &middot; actuarial cap " + (DATA.cap || 60) + "% per interval" +

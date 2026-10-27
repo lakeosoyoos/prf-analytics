@@ -304,7 +304,7 @@ def _basis(a: dict) -> str:
     provider = PROVIDER_LABELS.get(a["index_provider"] or "", "RMA")
     return (f"{round(a['coverage'] * 100)}% coverage · productivity {a['productivity']:.2f} · "
             f"County Base Value ${a['cbv']:.2f}/acre · {provider} index {a['window'][0]}–"
-            f"{a['window'][1]} · RY{a['rate_year']} rates · {a['cap']}% maximum per interval"
+            f"{a['window'][1]} · CY{a['rate_year']} rates · {a['cap']}% maximum per interval"
             + (f" (Jan–Feb {a['janfeb_cap']}%)" if a.get("janfeb_cap") else ""))
 
 
