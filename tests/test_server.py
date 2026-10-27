@@ -145,6 +145,7 @@ def test_allocations_page_renders_for_a_real_grid(port):
     status, body, _ = get(port, f"/page/allocations?grid={grid}&county={fips}&use=Grazing")
     assert status == 200 and b"saveCsv" in body and b"__PAYLOAD__" not in body
     assert b"compositionsForCombo" in body          # the analyzer's own policy rules, Jan-Feb limit included
+    assert b'"deck_host":"mac"' in body and b'id="saveDeck"' in body   # deck button beside Save as CSV
 
 
 def test_allocations_missing_grid_is_a_note_and_bad_input_is_400(port):

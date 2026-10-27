@@ -128,10 +128,13 @@ def check_window(window) -> None:
             "/Recommended allocation/.test(document.getElementById('f-iv').contentDocument.body.innerText)", 20))
         state = js("(function(){var w=document.getElementById('f-iv').contentWindow;"
                    "return w.PRF_STATE?JSON.stringify(w.PRF_STATE()):null})()")
-        check("analyzer state reaches the Save deck button", bool(state) and
+        check("analyzer state readable by the window", bool(state) and
               '"coverage":"0.9"' in state and '"lookback":20' in state, f"({state})")
-        check("Save deck button present", bool(js(
-            "!!document.getElementById('iv-deck-save') && !document.getElementById('iv-deck-save').disabled")))
+        js("document.getElementById('t-al').click()")
+        check("deck button beside Save as CSV", wait(
+            "(function(){var d=document.getElementById('f-al').contentDocument;"
+            "var b=d&&d.getElementById('saveDeck');return !!(b && !d.getElementById('deckWrap').hidden"
+            " && b.className===d.getElementById('saveCsv').className);})()", 30))
         al_rows = js("document.getElementById('f-al').contentDocument.querySelectorAll('#all tbody tr').length")
         al_count = js("document.getElementById('f-al').contentDocument.getElementById('count').textContent")
         check("all-allocations table filled", (al_rows or 0) >= 100, f"({al_rows} rows; {al_count})")

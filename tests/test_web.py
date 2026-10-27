@@ -52,25 +52,30 @@ def test_a_wrong_passcode_is_refused(monkeypatch):
 
 def test_the_right_passcode_opens_the_app(monkeypatch):
     at = _login(_app(monkeypatch).run(), PASS)
-    assert not at.exception and [t.label for t in at.tabs][:1] == ["County map"]
+    assert not at.exception and [t.label for t in at.tabs][:1] == ["County Map"]
 
 
 def test_behind_the_gate_every_tab_renders_and_herd_size_is_gone(monkeypatch):
     at = _inside(monkeypatch)
     assert not at.exception, [e.message for e in at.exception]
     labels = [t.label for t in at.tabs]
-    assert labels == ["County map", "Interval analyzer", "All allocations", "Old vs new index"]
+    assert labels == ["County Map", "Interval Analyzer", "All Allocations", "Old vs New Index"]
     assert "Herd size" not in labels
     assert not at.sidebar.children, "the app has no left column"
     assert any(b.label == "Log out" for b in at.button)
     # the deck builder and the comparison download are present
-    assert any(b.label == "Build deck" for b in at.button)
+    assert any(b.label == "Build client deck" for b in at.button)
+    # every tab label and section header is in Title Case
+    assert all(w[0].isupper() for t in labels for w in t.split() if w not in ("vs",))
+    for h in at.subheader:
+        words = [w for w in h.value.split() if w[0].isalpha() and w not in ("per", "and", "for", "vs", "the", "of")]
+        assert all(w[0].isupper() for w in words), h.value
     assert len(at.metric) >= 5
 
 
 def test_the_deck_builds_in_the_web_app(monkeypatch):
     at = _inside(monkeypatch)
-    next(b for b in at.button if b.label == "Build deck").click()
+    next(b for b in at.button if b.label == "Build client deck").click()
     at = at.run()
     assert not at.exception, [e.message for e in at.exception]
     assert not at.error, [e.value for e in at.error]
@@ -87,3 +92,24 @@ def test_auth_module_is_the_web_catalog_one():
 def test_the_real_secrets_file_is_ignored_by_git():
     ignore = (ROOT / ".gitignore").read_text()
     assert "web/.streamlit/secrets.toml" in ignore
+
+
+def test_the_table_follows_the_deck_row_settings(monkeypatch):
+    """The All Allocations table is rendered with the deck row's coverage, window and productivity."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from prf_app import paths  # noqa: F401  (engine on sys.path)
+    from src import prfallocpage
+    seen = []
+    real = prfallocpage.render_alloc_page_html
+    monkeypatch.setattr(prfallocpage, "render_alloc_page_html", lambda p: seen.append(p) or real(p))
+    at = _inside(monkeypatch)
+    at.selectbox(key="al_cov").select("80%")
+    at.selectbox(key="al_end").select(2015)
+    at.number_input(key="al_pf").set_value(120)
+    at = at.run()
+    assert not at.exception, [e.message for e in at.exception]
+    last = seen[-1]
+    assert last["default_coverage"] == "0.8"
+    assert last["locked"] == {"end": 2015, "len": 15, "pf": 1.2}     # 20 years would start before 2000
+    assert "deck_host" not in last            # the in-table deck button stays hidden on the web

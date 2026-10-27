@@ -168,7 +168,10 @@ def alloc_page_html(grid_id: int, county_fips: str, use: str) -> str:
     """Every allocation for one grid, sorted. Same payload (and so the same numbers) as the
     analyzer; see src/prfallocpage."""
     payload = prfallocpage.build_alloc_payload(conn(), grid_id, county_fips=county_fips, use=use)
-    return prfallocpage.render_alloc_page_html(payload) if payload else ""
+    if not payload:
+        return ""
+    payload["deck_host"] = "mac"     # this app can build the deck: show the button beside Save as CSV
+    return prfallocpage.render_alloc_page_html(payload)
 
 
 def check_csv_name(v: str) -> str:

@@ -2,8 +2,8 @@
 
     cd web && streamlit run streamlit_app.py
 
-Four tabs, the same as the Mac app minus Herd size: County map, Interval analyzer (with the
-client-deck builder), All allocations, Old vs new index. Nothing is computed here: every view
+Four tabs, the same as the Mac app minus Herd Size: County Map, Interval Analyzer, All Allocations
+(with the client-deck builder), Old vs New Index. Nothing is computed here: every view
 comes from prf_app/views.py, the module the Mac app's window is served from, over the same
 PRF-only database in ../engine/data. So the web app and the Mac app cannot show different numbers.
 
@@ -26,7 +26,7 @@ for p in (str(ROOT), str(Path(__file__).resolve().parent)):
 
 import auth  # noqa: E402
 from prf_app import views  # noqa: E402  (puts the engine on sys.path)
-from src import prfdeck  # noqa: E402
+from src import prfallocpage, prfdeck  # noqa: E402
 
 APP_NAME = "PRF Analytics"
 COVERAGES = list(views.COVERAGES)                       # "90%", "85%", ... -> engine keys
@@ -92,49 +92,17 @@ def _pickers(prefix: str):
 
 # --------------------------------------------------------------------------- tabs
 def tab_map() -> None:
-    st.subheader("County map")
+    st.subheader("County Map")
     st.caption("One county map, five views — pick one from **Show** inside the map: County Base "
                "Value, best win rate, best return per $1, best return per acre and commission per acre.")
     st.iframe(views.prf_page_html(), height=860)
 
 
-def _deck_panel(grid: int, fips: str, use: str) -> None:
-    with st.expander("Build a client deck for this grid (PowerPoint or PDF)"):
-        st.caption("The agency's three slides: \"PRF Analysis\" and the date with the county below, "
-                   "the five most consistent and five best-return allocations, and the closing slide. "
-                   "Set the coverage, productivity and window here; the basis is printed on the slide.")
-        years = prfdeck.history_years(views.conn(), grid)
-        if not years:
-            st.info("This grid has no packed interval history.")
-            return
-        c1, c2, c3, c4, c5 = st.columns(5)
-        cov = c1.selectbox("Coverage level", COVERAGES, key="deck_cov")
-        pf = c2.number_input("Productivity (%)", min_value=views.PF_MIN, max_value=views.PF_MAX,
-                             value=views.PF_DEFAULT, step=5, key="deck_pf")
-        end = c3.selectbox("Window ends", prfdeck.end_year_choices(years), key="deck_end")
-        backs = prfdeck.lookbacks_for(years, end)
-        back = c4.selectbox("Lookback", backs, index=len(backs) - 1, key="deck_back",
-                            format_func=lambda n: f"{n} years")
-        fmt = {"PowerPoint": "pptx", "PDF": "pdf"}[c5.selectbox("Format", ["PowerPoint", "PDF"], key="deck_fmt")]
-        sig = (grid, fips, use, cov, int(pf), int(end), int(back), fmt)
-        if st.button("Build deck", key="deck_build"):
-            try:
-                name, body = views.deck(grid, fips, use, views.COVERAGES[cov], int(pf), int(end),
-                                        int(back), fmt, dt.date.today().isoformat())
-                st.session_state["deck"] = (sig, name, body)
-            except ValueError as exc:
-                st.session_state["deck"] = None
-                st.error(str(exc))
-        built = st.session_state.get("deck")
-        if built and built[0] == sig:
-            st.download_button(f"Download {built[1]}", built[2], file_name=built[1],
-                               mime=prfdeck.FORMATS[fmt], key="deck_download")
-
-
 def tab_interval() -> None:
-    st.subheader("Interval analyzer — per-interval heat map and recommendation")
+    st.subheader("Interval Analyzer — Per-Interval Heat Map and Recommendation")
     st.caption("Every two-month interval scored on its own for one grid, the year-by-year matrix, "
-               "and the recommended allocation. **Window ends** and **Lookback** choose the years.")
+               "and the recommended allocation. **Window ends** and **Lookback** choose the years. "
+               "The client deck is built from the **All Allocations** tab.")
     pick = _pickers("iv")
     if not pick:
         return
@@ -143,27 +111,58 @@ def tab_interval() -> None:
         st.info(f"Grid {pick[0]} has no packed interval history in this database.")
         return
     st.iframe(html, height=920)
-    _deck_panel(*pick)
 
 
 def tab_alloc() -> None:
-    st.subheader("All allocations — every interval split for one grid, sorted")
+    st.subheader("All Allocations — Every Interval Split for One Grid, Sorted")
     st.caption("Every admissible allocation (2–5 non-adjacent intervals, 5% steps, 10% to the county "
                "cap each, Jan–Feb at most 25% from crop year 2027) with average net return per acre, "
                "win rate and return per $1. **Sort by** any metric; rank #1 is the analyzer's "
-               "recommendation. **Save as CSV** writes the optimizer workbook's columns.")
+               "recommendation. **Save as CSV** writes the optimizer workbook's columns; "
+               "**Build client deck** writes the agency's three slides for the same settings.")
     pick = _pickers("al")
     if not pick:
         return
-    html = views.alloc_page_html(*pick)
-    if not html:
-        st.info(f"Grid {pick[0]} has no packed interval history in this database.")
+    grid, fips, use = pick
+    years = prfdeck.history_years(views.conn(), grid)
+    if not years:
+        st.info(f"Grid {grid} has no packed interval history in this database.")
         return
-    st.iframe(html, height=1150)
+    # One row sets the table AND the deck, so the deck is always the table on screen.
+    c = st.columns([1, 1, 1, 1, 1, 1.3], vertical_alignment="bottom")
+    cov = c[0].selectbox("Coverage level", COVERAGES, key="al_cov")
+    pf = int(c[1].number_input("Productivity (%)", min_value=views.PF_MIN, max_value=views.PF_MAX,
+                               value=views.PF_DEFAULT, step=5, key="al_pf"))
+    end = int(c[2].selectbox("Window ends", prfdeck.end_year_choices(years), key="al_end"))
+    backs = prfdeck.lookbacks_for(years, end)
+    back = int(c[3].selectbox("Lookback", backs, index=len(backs) - 1, key="al_back",
+                              format_func=lambda n: f"{n} years"))
+    fmt = {"PowerPoint": "pptx", "PDF": "pdf"}[c[4].selectbox("Deck format", ["PowerPoint", "PDF"], key="al_fmt")]
+    sig = (grid, fips, use, cov, pf, end, back, fmt)
+    if c[5].button("Build client deck", type="primary", key="al_deck", use_container_width=True):
+        try:
+            name, body = views.deck(grid, fips, use, views.COVERAGES[cov], pf, end, back, fmt,
+                                    dt.date.today().isoformat())
+            st.session_state["al_deck_file"] = (sig, name, body)
+        except ValueError as exc:
+            st.session_state["al_deck_file"] = None
+            st.error(str(exc))
+    built = st.session_state.get("al_deck_file")
+    if built and built[0] == sig:
+        st.download_button(f"Download {built[1]}", built[2], file_name=built[1], type="primary",
+                           mime=prfdeck.FORMATS[fmt], key="al_deck_download")
+
+    payload = prfallocpage.build_alloc_payload(views.conn(), grid, county_fips=fips, use=use)
+    if not payload:
+        st.info(f"Grid {grid} has no packed interval history in this database.")
+        return
+    payload["default_coverage"] = views.COVERAGES[cov]
+    payload["locked"] = {"end": end, "len": back, "pf": pf / 100}
+    st.iframe(prfallocpage.render_alloc_page_html(payload), height=1150)
 
 
 def tab_vintage() -> None:
-    st.subheader("Old vs new rainfall index — how the recommendations moved")
+    st.subheader("Old vs New Rainfall Index — How the Recommendations Moved")
     meta = views.vintage_meta()
     st.caption(
         "RMA replaced the PRF rainfall index for the 2027 crop year. This sets the optimizer's answer "
@@ -225,7 +224,7 @@ def main() -> None:
         if st.button("Log out", key="logout"):
             st.session_state.clear()
             st.rerun()
-    tabs = st.tabs(["County map", "Interval analyzer", "All allocations", "Old vs new index"])
+    tabs = st.tabs(["County Map", "Interval Analyzer", "All Allocations", "Old vs New Index"])
     with tabs[0]:
         tab_map()
     with tabs[1]:

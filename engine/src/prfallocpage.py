@@ -59,7 +59,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PRF — all allocations</title>
+<title>PRF — All Allocations</title>
 __STYLE__
 <style>
   .tools { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 9px 16px 0; }
@@ -80,6 +80,8 @@ __STYLE__
   table.all td.neg { color: #9a3b1b; }
   .top1 td { background: #e5f5e0 !important; }
   .check { margin: 8px 16px 0; font-size: 11.5px; color: var(--ink-2); }
+  #deckWrap { display: inline-flex; gap: 8px; align-items: center; }
+  #deckWrap[hidden] { display: none; }
   .save {
     font: inherit; font-size: 12.5px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
     border: 1px solid #1f5fb4; background: #2a78d6; color: #fff; font-weight: 600;
@@ -89,7 +91,7 @@ __STYLE__
 </head>
 <body>
 <header>
-  <h1 id="title">PRF — all allocations</h1>
+  <h1 id="title">PRF — All Allocations</h1>
   <div class="sub" id="sub"></div>
 </header>
 
@@ -110,8 +112,13 @@ __STYLE__
   <span class="count" id="count"></span>
   <span style="flex:1"></span>
   <button type="button" class="save" id="saveCsv">Save as CSV…</button>
+  <span id="deckWrap" hidden>
+    <select id="deckFmt" title="Deck format"><option value="pptx">PowerPoint</option><option value="pdf">PDF</option></select>
+    <button type="button" class="save" id="saveDeck">Build client deck…</button>
+  </span>
 </div>
 <div class="check" id="check"></div>
+<div class="check" id="lockNote"></div>
 
 <section>
   <div class="scroller"><table class="all" id="all"></table></div>
@@ -131,6 +138,22 @@ var DATA = __PAYLOAD__;
 
 __CORE__
 __POLICY__
+  // ---------------- settings fixed by the host
+  // The web app sets coverage, window and productivity with its own controls (so the deck it
+  // builds and this table agree) and passes them as DATA.locked; the page then hides its copies.
+  if (DATA.locked) {
+    var L = DATA.locked;
+    if (L.end && YEARS.indexOf(+L.end) >= 0) { endYear = +L.end; endSel.value = String(endYear); }
+    if (L.len) { wanted = +L.len; }
+    fitLookback();
+    if (L.pf) el("pf").value = Number(L.pf).toFixed(2);
+    ["covSeg", "endYear", "lookLen", "pf"].forEach(function (id) {
+      var lab = el(id).closest("label"); if (lab) lab.style.display = "none";
+    });
+    el("lockNote").innerHTML = "Coverage " + Math.round(parseFloat(coverage) * 100) + "%, " +
+      "productivity " + Number(L.pf || 1).toFixed(2) + " and the window are set above the table.";
+  }
+
   // ---------------- the whole search, kept so a re-sort or a page turn costs nothing
   var PER = 100, page = 0;
   var SCORED = {key: null, rows: []};
@@ -224,8 +247,33 @@ __POLICY__
     });
     return lines.join("\n") + "\n";
   }
+  // ---------------- Build client deck: the host builds it (the Mac app's window, or its local
+  // server in a browser) from exactly this page's grid, county, use, coverage, window and
+  // productivity. Hidden where no host can (the web app has its own deck button).
+  var host = window.parent && window.parent.pywebview;
+  var canDeck = DATA.deck_host === "mac";
+  el("deckWrap").hidden = !canDeck;
+  el("saveDeck").addEventListener("click", function () {
+    var a = {grid: DATA.grid_id, county: DATA.county_fips, use: DATA.use, cov: coverage,
+             pf: Math.round(pf() * 100), end: endYear, len: lookback, fmt: el("deckFmt").value};
+    var toast = (window.parent && window.parent.PRF_TOAST) || function () {};
+    if (host && host.api && host.api.save_deck) {
+      var b = el("saveDeck"); b.disabled = true; toast("Building the deck…");
+      host.api.save_deck(a.grid, a.county, a.use, a.cov, a.pf, a.end, a.len, a.fmt).then(function (r) {
+        b.disabled = false;
+        if (r && r.error) toast("Could not build the deck: " + r.error);
+        else if (r && r.path) toast("Saved " + r.path.split("/").pop());
+      }).catch(function (e) { b.disabled = false; toast("Could not save: " + e); });
+      return;
+    }
+    var q = Object.keys(a).map(function (k) { return k + "=" + encodeURIComponent(a[k]); }).join("&");
+    var link = document.createElement("a");
+    link.href = "/api/deck?" + q; link.download = "";
+    document.body.appendChild(link); link.click(); link.remove();
+  });
+
   el("saveCsv").addEventListener("click", function () {
-    var name = csvName(), text = buildCsv(), host = window.parent && window.parent.pywebview;
+    var name = csvName(), text = buildCsv();
     if (host && host.api && host.api.save_text_file) {
       host.api.save_text_file(name, text).then(function (p) {
         if (p && window.parent.PRF_TOAST) window.parent.PRF_TOAST("Saved " + p.split("/").pop());

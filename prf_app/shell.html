@@ -104,11 +104,11 @@
 </header>
 
 <nav role="tablist" aria-label="Views">
-  <button role="tab" id="t-map" aria-controls="p-map" aria-selected="true">County map</button>
-  <button role="tab" id="t-iv" aria-controls="p-iv" aria-selected="false">Interval analyzer</button>
-  <button role="tab" id="t-al" aria-controls="p-al" aria-selected="false">All allocations</button>
-  <button role="tab" id="t-vt" aria-controls="p-vt" aria-selected="false">Old vs new index</button>
-  <button role="tab" id="t-herd" aria-controls="p-herd" aria-selected="false">Herd size</button>
+  <button role="tab" id="t-map" aria-controls="p-map" aria-selected="true">County Map</button>
+  <button role="tab" id="t-iv" aria-controls="p-iv" aria-selected="false">Interval Analyzer</button>
+  <button role="tab" id="t-al" aria-controls="p-al" aria-selected="false">All Allocations</button>
+  <button role="tab" id="t-vt" aria-controls="p-vt" aria-selected="false">Old vs New Index</button>
+  <button role="tab" id="t-herd" aria-controls="p-herd" aria-selected="false">Herd Size</button>
 </nav>
 
 <main>
@@ -116,7 +116,7 @@
 <section role="tabpanel" id="p-map" class="on" aria-labelledby="t-map">
   <div class="bar">
     <details class="about">
-      <summary>About these views</summary>
+      <summary>About These Views</summary>
       <p>One map, five views — pick one from the <b>Show</b> dropdown inside the map:</p>
       <ul>
         <li><b>County multiplier — CBV ($/acre)</b> — the RMA per-acre county dollar figure that scales
@@ -153,9 +153,9 @@
 
 <!-- ============================================================ interval analyzer -->
 <section role="tabpanel" id="p-iv" aria-labelledby="t-iv">
-  <h2>Interval analyzer — per-interval heat map and recommendation</h2>
+  <h2>Interval Analyzer — Per-Interval Heat Map and Recommendation</h2>
   <details class="about">
-    <summary>About this view</summary>
+    <summary>About This View</summary>
     <p>The county map ranks counties on the <b>best</b> allocation it found. This is the layer underneath:
       every two-month interval scored on its own for one grid, so you can see which intervals are actually
       carrying the result. Pick the metric — win rate, return per $1 of protection, or return per acre — and
@@ -164,20 +164,13 @@
       everything is re-scored over exactly those years and the allocation search is re-run, which is the
       question a fixed illustration can't answer: does this interval pay because of the whole record, or
       because of one wet decade — and would it have said the same thing if you had asked five years ago?
-      <b>Save client deck</b> turns the grid, county and use above, with the coverage, productivity and
-      window set in the analyzer, into a three-slide PowerPoint or PDF: a title slide, the five most consistent
-      and five best-return allocations, and a closing slide.</p>
+      The client deck is built from the <b>All Allocations</b> tab.</p>
   </details>
   <div class="bar">
     <label class="f">State<select id="iv-state"></select></label>
     <label class="f">County<select id="iv-county" class="wide"></select></label>
     <label class="f">Grid<select id="iv-grid"></select></label>
     <label class="f">Intended use<select id="iv-use"></select></label>
-    <span class="spacer" style="flex:1"></span>
-    <label class="f">Format<select id="iv-deck-fmt"><option value="pptx">PowerPoint</option>
-      <option value="pdf">PDF</option></select></label>
-    <button class="btn primary" id="iv-deck-save"
-      title="Uses the grid, county and use chosen here, and the coverage, productivity and window set in the analyzer below">Save client deck…</button>
   </div>
   <div id="iv-notes"></div>
   <div class="frame" id="iv-frame"><iframe id="f-iv" title="Interval analyzer" style="height:900px"></iframe>
@@ -187,16 +180,19 @@
 <!-- ============================================================ old vs new -->
 <!-- ============================================================ all allocations -->
 <section role="tabpanel" id="p-al" aria-labelledby="t-al">
-  <h2>All allocations — every interval split for one grid, sorted</h2>
+  <h2>All Allocations — Every Interval Split for One Grid, Sorted</h2>
   <details class="about">
-    <summary>About this view</summary>
+    <summary>About This View</summary>
     <p>The interval analyzer shows the one allocation that wins. This is the whole search behind it:
       every admissible allocation for the grid, county and use chosen here (2–5 non-adjacent intervals,
       5% steps, 10% up to the county cap on each, and Jan–Feb no more than 25% from crop year 2027), with
       its average net return per acre, win rate and return per $1 over the window you pick. <b>Sort by</b>
       orders them by any of the three metrics, ties broken by the other; rank #1 is the analyzer's
       recommendation. <b>Save as CSV</b> writes the rows in the optimizer workbook's columns
-      (grid_county_use, combinations, proportions, average_net_return, win rate, state).</p>
+      (grid_county_use, combinations, proportions, average_net_return, win rate, state).
+      <b>Build client deck</b>, beside it, saves the agency's three-slide PowerPoint or PDF for the same grid,
+      county, use, coverage, window and productivity: a title slide, the five most consistent and five
+      best-return allocations, and a closing slide.</p>
   </details>
   <div class="bar">
     <label class="f">State<select id="al-state"></select></label>
@@ -210,9 +206,9 @@
 </section>
 
 <section role="tabpanel" id="p-vt" aria-labelledby="t-vt">
-  <h2>Old vs new rainfall index — how the recommendations moved</h2>
+  <h2>Old vs New Rainfall Index — How the Recommendations Moved</h2>
   <details class="about">
-    <summary>About this view</summary>
+    <summary>About This View</summary>
     <p id="vt-about"></p>
   </details>
   <div id="vt-notes"></div>
@@ -245,9 +241,9 @@
 
 <!-- ============================================================ herd size -->
 <section role="tabpanel" id="p-herd" aria-labelledby="t-herd">
-  <h2>Herd size requirements — FSA acres per animal unit</h2>
+  <h2>Herd Size Requirements — FSA Acres per Animal Unit</h2>
   <details class="about">
-    <summary>About this view</summary>
+    <summary>About This View</summary>
     <p>How much of the insured ground a given herd size needs, by county: FSA's National Crop Table publishes
       <b>Acres Per Animal Unit</b> — the acres of a given crop/type needed to carry one animal unit for the
       grazing period — for every crop/type it prices for grazing under NAP/ARC-PLC. This is <b>not</b> an RMA
@@ -406,34 +402,6 @@
   $("iv-county").addEventListener("change", ivCounty);
   $("iv-grid").addEventListener("change", ivDraw);
   $("iv-use").addEventListener("change", ivDraw);
-
-  // The analyzer page keeps its own coverage / productivity / window; it offers them through
-  // PRF_STATE (same origin, so the window can read the iframe). The deck is built for exactly
-  // what is on screen.
-  function ivPageState() {
-    try {
-      var w = $("f-iv").contentWindow;
-      return w && typeof w.PRF_STATE === "function" ? w.PRF_STATE() : null;
-    } catch (e) { return null; }
-  }
-  $("iv-deck-save").addEventListener("click", function () {
-    var st = ivPageState(), btn = this;
-    if (!st || !$("iv-grid").value) { toast("Wait for the analyzer to finish loading, then try again."); return; }
-    var a = { grid: $("iv-grid").value, county: $("iv-county").value, use: $("iv-use").value,
-              cov: st.coverage, pf: Math.round(st.productivity * 100), end: st.endYear,
-              len: st.lookback, fmt: $("iv-deck-fmt").value };
-    if (window.pywebview && window.pywebview.api) {
-      btn.disabled = true; toast("Building the deck…");
-      window.pywebview.api.save_deck(a.grid, a.county, a.use, a.cov, a.pf, a.end, a.len, a.fmt)
-        .then(function (r) {
-          btn.disabled = false;
-          if (r.error) toast("Could not build the deck: " + r.error);
-          else if (r.path) toast("Saved " + r.path.split("/").pop());
-        }).catch(function (e) { btn.disabled = false; toast("Could not save: " + e); });
-    } else {
-      window.location = "/api/deck?" + qs(a);
-    }
-  });
 
   // ---------------------------------------------------------------- old vs new
   var COVS = { "90%": "0.9", "85%": "0.85", "80%": "0.8", "75%": "0.75", "70%": "0.7" };
