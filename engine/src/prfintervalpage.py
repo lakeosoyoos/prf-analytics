@@ -353,7 +353,7 @@ _TEMPLATE = r"""<!DOCTYPE html>
 </div>
 
 <section>
-  <h2 id="stripTitle">By interval</h2>
+  <h2 id="stripTitle">By Interval Scored Alone</h2>
   <div class="scroller">
     <table id="strip"></table>
   </div>
