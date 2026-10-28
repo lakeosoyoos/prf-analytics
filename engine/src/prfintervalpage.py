@@ -35,7 +35,7 @@ import sqlite3
 
 from . import prfbulk
 from .prfintervals import (
-    COVERAGES, INDEX_CAP, USES, unpack_index, unpack_rates, unpack_use_mask,
+    COVERAGES, USES, unpack_index, unpack_rates, unpack_use_mask,
 )
 from .prfopt import INTERVALS, MAX_PCT, MIN_PCT, STEP_PCT
 from .prfpage import _cov_key, _f, _fips5, _parse_list
@@ -216,7 +216,6 @@ def build_interval_payload(conn: sqlite3.Connection, grid_id: int, *,
         "other_counties": [{"fips": f, "name": n, "state": s}
                            for f, n, s in siblings if f != county_fips],
         "sweep": _sweep_answer(conn, grid_id, use),
-        "index_cap": INDEX_CAP,
         # Which Rainfall Index series these numbers are, read from the packed row itself so
         # it survives into the shipped DB (prf_grid_index does not). RMA moved from NOAA CPC
         # to NOAA NCEI for the 2027 crop year and re-based the whole history with it, so
@@ -557,11 +556,8 @@ var DATA = __PAYLOAD__;
     if (metric === "net") return (v >= 0 ? "" : "−") + "$" + Math.abs(v).toFixed(3);
     return (v >= 0 ? "" : "−") + "$" + Math.abs(v).toFixed(2);
   }
-  // Values at the storage cap are "this much or wetter" — far above any coverage level, so
-  // the payout is zero either way, but the number itself should not pretend to be exact.
   function fmtIdx(v) {
     if (v === null || v === undefined) return "&mdash;";
-    if (DATA.index_cap && v >= DATA.index_cap) return "≥" + DATA.index_cap.toFixed(2);
     return v.toFixed(2);
   }
 
@@ -902,11 +898,8 @@ var DATA = __PAYLOAD__;
       "year's net return per $1 of protection would have been at " +
       Math.round(parseFloat(coverage) * 100) + "% coverage — green where the indemnity " +
       "beat the premium, warm where it did not. <b>Elected</b> applies the " +
-      "allocation above (the chosen rank) to each year. Index values are stored to 0.005 of normal wherever a payout is possible (below " +
-      "0.90) and in coarser steps above it, so <b>Avg index</b> can differ from RMA&rsquo;s by " +
-      "about a hundredth, and where two allocations are nearly tied on <b>Win rate</b> the " +
-      "pick can differ from an exact calculation by about a year in twenty (return per $1 " +
-      "almost never does).";
+      "allocation above (the chosen rank) to each year. Index values are RMA&rsquo;s own, to the " +
+      "thousandth, so every figure here is computed from exactly the published index.";
   }
 
   // ---------------- header

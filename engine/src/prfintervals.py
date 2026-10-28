@@ -9,43 +9,30 @@ re-run the allocation optimizer against the result. Those inputs live in prf_gri
 (11.7M rows) and prf_grid_rate (2.1M rows), and scripts/build_app_db.py drops both from the
 shipped database — together they are ~1 GB against a 95 MB ship budget.
 
-So this module reduces them to one row per grid of packed bytes: 13,462 rows, ~4.5 MB,
-which does ship. Nothing is aggregated away — every interval x year cell survives — only
-the *precision* and the *year span* are bounded, both deliberately:
+So this module reduces them to one row per grid of packed bytes: 13,462 rows, ~8.4 MB,
+which does ship. Nothing is aggregated away — every interval x year cell survives at RMA's own precision — only
+the *year span* is bounded, deliberately:
 
 YEAR SPAN is 2000-2025 (26 years), deeper than src/prfsweep.YEARS (2006-2025) on purpose. The
 analyzer lets the reader pick where the lookback ENDS as well as how long it is (5/10/15/20
 years), so a 20-year window ending in 2019 needs index years back to 2000. The stored sweep
 (prf_opt_best) still covers 2006-2025 only; the page compares against it only when the chosen
 window is exactly that one, and says so otherwise. The span is a build-time constant: the
-working catalog holds the NCEI history back to 1951, but each added year costs 11 bytes a grid
-(~0.15 MB across 13,414 grids) against a 95 MB ship budget. 1986 was tried first (+3.7 MB, 92.4 MB
-shipped); 2000 was chosen to keep ~4.6 MB of headroom, at the price that a 20-year lookback can
+working catalog holds the NCEI history back to 1951, but each added year costs 22 bytes a grid
+(~0.3 MB across 13,414 grids) against a 95 MB ship budget. 1986 was tried first (+3.7 MB, 92.4 MB
+shipped); 2000 was chosen to fit the budget (94.6 MB shipped once the index went exact), at the price that a 20-year lookback can
 then end only in 2019-2025. Widening it is one constant here plus a rebuild of the table.
 
-INDEX PRECISION is ONE BYTE per cell with unequal steps, because a rainfall index matters to
-a payout only below the coverage level (0.90 at most) and everywhere above that only to a
-display and an average:
+INDEX PRECISION is EXACT: two bytes per cell, the index in whole thousandths of normal, which is
+the precision RMA publishes it at (0.345, 1.526). So every payout, average, win rate and rank the
+analyzer computes is the one RMA's own numbers give -- there is no rounding to reason about.
+Index format 2 packed one byte per cell (0.005 steps below 0.90, coarser above) to save ~3.9 MB;
+that rounding could swap two nearly tied allocations, so it was retired for the exact code:
 
-    codes   0..180   0.000 .. 0.900   steps of 0.005   (every cell that can still pay)
-    codes 181..230   0.91  .. 1.40    steps of 0.01
-    codes 231..254   1.40  .. 6.00    geometric, ~6% a step   (6.0 is INDEX_CAP; wetter clamps)
-    code  255        missing
+    uint16 little-endian, value = round(index * 1000)   (0.000 .. 65.534)
+    65535                                                missing
 
-Where a payout is possible the precision is exactly what it was under the previous
-(0.005 step, capped at 1.25) code: an indemnity is max(0, (coverage - index) / coverage), so
-any index at or above the coverage level pays exactly zero however it was rounded, and below
-it the payout moves by d(index)/coverage -- the worst case is half a step over the LOWEST
-coverage level, 0.0025 / 0.70 = 0.0036 per $1 of protection, about 14 cents an acre on a $40
-protection for a single interval-year, and unbiased across years. (The worst case is at 70%
-coverage, not 90%: the smaller divisor magnifies it. tests/test_prfintervals.py pins this
-bound AND checks that every payout is identical to the previous code's.) What changed is the
-wet end. The previous code stopped at 1.25 and lumped everything wetter into one "over" code,
-which was fine for a payout but made any AVERAGE low -- 26% of cells in the national history are
-above 1.25 -- so the page could not compute an average over a window the reader chooses. The tail
-now keeps an approximate value instead, which makes a window average accurate to about 0.003
-on average (0.015 at the 99th percentile, 0.04 worst, measured on 265 grids) rather than 0.11.
-Rates are NOT approximated: they are stored as exact 1/10,000ths.
+Rates are stored the same way, as exact 1/10,000ths.
 
 RATES ARE USE-INDEPENDENT, measured not assumed: across all 725,020 overlapping
 (grid, interval, coverage) rows, Grazing, Haying and Haying-Irrigated carry the IDENTICAL
@@ -59,7 +46,6 @@ recommend an interval the selected use cannot buy.
 """
 from __future__ import annotations
 
-import bisect
 import sqlite3
 import struct
 from typing import Iterator
@@ -75,14 +61,12 @@ YEARS = tuple(range(YEAR_MIN, YEAR_MAX + 1))
 COVERAGES = (0.70, 0.75, 0.80, 0.85, 0.90)
 USES = ("Grazing", "Haying", "Haying-Irrigated")
 
-# Index quantization: ONE byte, steps that widen as the index gets too high to pay.
-INDEX_STEP = 0.005             # precision wherever a payout is still possible
-INDEX_FINE_MAX = 0.90          # last code at INDEX_STEP -- the highest coverage level
-INDEX_MID_STEP = 0.01
-INDEX_MID_MAX = 1.40
-INDEX_CAP = 6.0                # wetter than this clamps (0.01% of cells; cannot pay either way)
-INDEX_MISSING = 255
-INDEX_FORMAT = 2               # first byte of every packed index blob; 1 was the capped code
+# Index storage: exact, uint16 thousandths of normal (RMA publishes 3 decimals).
+INDEX_SCALE = 1000
+INDEX_STEP = 1 / INDEX_SCALE   # the published precision, so storage loses nothing
+INDEX_MISSING = 65535
+INDEX_CAP = (INDEX_MISSING - 1) / INDEX_SCALE   # 65.534; never reached by a real index
+INDEX_FORMAT = 3               # first byte of every packed index blob; 2 was the 1-byte code
 
 RATE_SCALE = 10000             # rates are published to 4 decimals; this is exact
 RATE_MISSING = 65535
@@ -90,48 +74,32 @@ MEAN_SCALE = 1000
 MEAN_MISSING = 65535
 
 
-def _decode_table() -> tuple[float, ...]:
-    fine = [round(i * INDEX_STEP, 3) for i in range(int(round(INDEX_FINE_MAX / INDEX_STEP)) + 1)]
-    n_mid = int(round((INDEX_MID_MAX - INDEX_FINE_MAX) / INDEX_MID_STEP))
-    mid = [round(INDEX_FINE_MAX + INDEX_MID_STEP * k, 2) for k in range(1, n_mid + 1)]
-    n_tail = INDEX_MISSING - 1 - (len(fine) + len(mid)) + 1
-    ratio = (INDEX_CAP / INDEX_MID_MAX) ** (1 / n_tail)
-    tail = [round(INDEX_MID_MAX * ratio ** k, 4) for k in range(1, n_tail)] + [INDEX_CAP]
-    table = tuple(fine + mid + tail)
-    assert len(table) == INDEX_MISSING, len(table)
-    return table
-
-
-_DECODE = _decode_table()
-_MIDPOINTS = tuple((a + b) / 2 for a, b in zip(_DECODE, _DECODE[1:]))
-
-
 def encode_index(value: float | None) -> int:
-    """Index (percent of normal, 1.0 = normal) -> one byte, nearest code. See module docstring."""
+    """Index (percent of normal, 1.0 = normal) -> uint16 thousandths. See module docstring."""
     if value is None:
         return INDEX_MISSING
     try:
         v = float(value)
     except (TypeError, ValueError):
         return INDEX_MISSING
-    if v < 0:
+    if v < 0 or v != v:
         return INDEX_MISSING
-    return bisect.bisect_left(_MIDPOINTS, v)
+    return min(INDEX_MISSING - 1, int(round(v * INDEX_SCALE)))
 
 
 def decode_index(code: int) -> float | None:
-    """One byte -> index, or None when missing. Wetter than INDEX_CAP decodes to the cap."""
+    """uint16 -> index, or None when missing."""
     if code == INDEX_MISSING:
         return None
-    return _DECODE[code]
+    return code / INDEX_SCALE
 
 
 def pack_index(matrix: dict[int, dict[str, float]]) -> bytes:
-    """{year: {interval: index}} -> INDEX_FORMAT byte + interval-major bytes over YEARS."""
+    """{year: {interval: index}} -> INDEX_FORMAT byte + interval-major uint16s over YEARS."""
     out = bytearray([INDEX_FORMAT])
     for iv in INTERVALS:
         for year in YEARS:
-            out.append(encode_index(matrix.get(year, {}).get(iv)))
+            out += struct.pack("<H", encode_index(matrix.get(year, {}).get(iv)))
     return bytes(out)
 
 
@@ -139,21 +107,19 @@ def unpack_index(blob: bytes) -> dict[str, list[float | None]]:
     """Inverse of pack_index: {interval: [index per year, oldest first]}.
 
     The year count comes from the blob itself, so a table packed over a different span still
-    reads correctly. A blob in an older format is REFUSED rather than decoded: the previous
-    code put "wetter than 1.25" at 251, which this table would read as an ordinary 0.91..1.4
-    value, and a wrong index that looks plausible is worse than an error.
+    reads correctly. A blob in an older format is REFUSED rather than decoded: format 2 stored
+    one byte per cell on a different scale, and a wrong index that looks plausible is worse
+    than an error.
     """
     n_iv = len(INTERVALS)
-    if not blob or blob[0] != INDEX_FORMAT or (len(blob) - 1) % n_iv:
+    if not blob or blob[0] != INDEX_FORMAT or (len(blob) - 1) % (2 * n_iv):
         raise ValueError(
             "prf_interval_history.index_blob is not in index format "
             f"{INDEX_FORMAT} -- rebuild it with scripts/build_prf_interval_history.py")
-    n = (len(blob) - 1) // n_iv
-    out: dict[str, list[float | None]] = {}
-    for i, iv in enumerate(INTERVALS):
-        chunk = blob[1 + i * n:1 + (i + 1) * n]
-        out[iv] = [decode_index(b) for b in chunk]
-    return out
+    n = (len(blob) - 1) // (2 * n_iv)
+    codes = struct.unpack(f"<{n * n_iv}H", blob[1:])
+    return {iv: [decode_index(c) for c in codes[i * n:(i + 1) * n]]
+            for i, iv in enumerate(INTERVALS)}
 
 
 def pack_means(matrix: dict[int, dict[str, float]]) -> bytes:

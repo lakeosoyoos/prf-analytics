@@ -28,10 +28,9 @@ ranking against prfopt itself. What the columns mean:
                       (County Base Value x coverage x productivity) -- one year's worth, on average
   Intervals/Alloc.    the allocation, intervals in month order
 
-TWO LIMITS worth knowing. The index is stored one byte a cell (src/prfintervals), so where two
-allocations are nearly tied on success rate the pick can differ from an exact calculation by about
-a year in twenty; return per $1 almost never does. And the premium rates are the current rate
-year's applied to every year in the window: "what would today's price have paid".
+ONE LIMIT worth knowing. The index is RMA's own to the thousandth (src/prfintervals), so the
+rankings are exact; but the premium rates are the current rate year's applied to every year in
+the window: "what would today's price have paid".
 """
 from __future__ import annotations
 

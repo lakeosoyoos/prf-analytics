@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS prf_interval_history (
     year_min    INTEGER NOT NULL,   -- 2000 (the sweep's own window, 2006-2025, sits inside it)
     year_max    INTEGER NOT NULL,   -- 2025
     rate_year   INTEGER NOT NULL,   -- reinsurance year the packed rates are for
-    index_blob  BLOB NOT NULL,      -- format byte + 11 intervals x 26 years, uint8 (pack_index)
+    index_blob  BLOB NOT NULL,      -- format byte + 11 intervals x 26 years, uint16 thousandths (pack_index)
     mean_blob   BLOB NOT NULL,      -- 11 intervals, uint16 at 1/1000: the TRUE full-span mean (unread by the page)
     rate_blob   BLOB NOT NULL,      -- 11 intervals x 5 coverages, uint16 at 1/10,000 (exact)
     use_mask    INTEGER NOT NULL,   -- which intervals each intended use is actually OFFERED on
